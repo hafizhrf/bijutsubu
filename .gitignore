@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+*.log
+
+# Local tooling artifacts
+.pnpm-store/
+.playwright-mcp/
+.claude/

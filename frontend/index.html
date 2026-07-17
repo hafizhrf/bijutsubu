@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BiJustubu</title>
+    <script>
+      // Pre-paint dark-mode application: mirrors applyMode() in src/lib/themes.ts
+      // so a mode-mismatched reload never flashes before React loads. Dark is
+      // the product default — only an explicit "light" (or "system" on a
+      // light-preferring OS) opts out.
+      (function () {
+        var dark = true;
+        try {
+          var raw = localStorage.getItem("bijustubu-settings");
+          var mode = raw ? JSON.parse(raw).state.mode : null;
+          if (mode === "light") dark = false;
+          else if (mode === "system")
+            dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        } catch (e) {
+          /* first visit / malformed storage — keep the dark default */
+        }
+        if (dark) document.documentElement.classList.add("dark");
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

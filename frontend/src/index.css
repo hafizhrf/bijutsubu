@@ -1,0 +1,310 @@
+@import "tailwindcss";
+
+/* `dark:` utilities follow the .dark class on <html> (set by applyMode /
+   the pre-paint script in index.html), not the OS preference directly. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --color-ink: #0b0b0f;
+  --color-sidebar: #0d0d12;
+  --color-sidebar-hover: #1c1c24;
+  /* Text/icon color on top of the primary (sidebar) surface — themable:
+     white on the dark default, a deep same-hue shade on pastel themes. */
+  --color-sidebar-ink: #ffffff;
+  --color-accent-blue: #5b7cfa;
+
+  --color-canvas: #f1efe9;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f6f5f1;
+
+  --color-border-soft: #e7e5df;
+
+  --color-hero-from: #ec4b8f;
+  --color-hero-to: #f7823e;
+
+  --color-ink-muted: #8a8790;
+
+  --radius-card: 1.75rem;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(11, 11, 15, 0.04), 0 12px 24px -12px rgba(11, 11, 15, 0.12);
+
+  /* Chart chrome (grid lines, axis ticks, tooltip card) — read at runtime by
+     useChartTheme() since Recharts needs concrete color strings. */
+  --chart-grid: #e7e5df;
+  --chart-tick: #8a8790;
+  --chart-tooltip-bg: #ffffff;
+  --chart-tooltip-label: #3f3d45;
+  --chart-tooltip-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+}
+
+/* Dark mode: class-scoped overrides of the same tokens. Tailwind v4
+   utilities compile to var(--color-*) references, so everything styled with
+   bg-surface / text-ink / border-border-soft flips automatically. Accent
+   (sidebar) tokens are inline-styled per theme by applyTheme and stay as-is. */
+.dark {
+  --color-ink: #f2f1ee;
+  --color-ink-muted: #9b98a3;
+
+  --color-canvas: #101014;
+  --color-surface: #1a1a20;
+  --color-surface-muted: #23232b;
+
+  --color-border-soft: #2d2d36;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 24px -12px rgba(0, 0, 0, 0.6);
+
+  --chart-grid: #2d2d36;
+  --chart-tick: #9b98a3;
+  --chart-tooltip-bg: #23232b;
+  --chart-tooltip-label: #d6d4dc;
+  --chart-tooltip-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+:root {
+  color-scheme: light;
+}
+.dark {
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border-soft);
+  }
+
+  /* Tailwind v4 preflight leaves buttons with the default cursor; every
+     enabled interactive control should read as clickable. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  label[for],
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-delay: 0ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes scale-out {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+/* Exit half of the auth-showcase crossfade: content drifts up and out
+   before the next feature enters from below (fade-in-up). */
+@keyframes fade-out-up {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+  to {
+    opacity: 0;
+    translate: 0 -12px;
+  }
+}
+
+/* Timed progress line under the active auth-showcase feature. */
+@keyframes grow-x {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.85;
+    translate: 0 12px;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+    translate: 0 0;
+  }
+}
+
+/* Slow breathing for the auth pages' dot-grid backdrop: the grid SPACING
+   widens and contracts (background-size = tile size) while each dot keeps
+   its fixed 1.5px radius — no zoom, no layer scaling (scaling caused page
+   overflow/scrollbars). background-position:center makes the drift radiate
+   from the middle, where the form card sits. */
+@keyframes dots-breathe {
+  0%,
+  100% {
+    background-size: 22px 22px;
+  }
+  50% {
+    background-size: 28px 28px;
+  }
+}
+
+/* Soft breathing glow for the floating prompt dock so users notice the
+   chat entry point. Tinted with the theme accent so it works on any theme
+   and in both light and dark mode. */
+@keyframes dock-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 12px 32px -12px rgb(0 0 0 / 0.18),
+      0 0 0 0 color-mix(in srgb, var(--color-accent-blue) 0%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 12px 32px -12px rgb(0 0 0 / 0.18),
+      0 0 26px 3px color-mix(in srgb, var(--color-accent-blue) 30%, transparent);
+  }
+}
+
+@keyframes shimmer-slide {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 300% 0;
+  }
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.3s ease-out both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+@utility animate-fade-out {
+  animation: fade-out 0.15s ease-in both;
+}
+
+@utility animate-fade-in-up {
+  animation: fade-in-up 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+@utility animate-scale-in {
+  animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility animate-scale-out {
+  animation: scale-out 0.15s ease-in both;
+}
+
+@utility animate-fade-out-up {
+  animation: fade-out-up 0.22s ease-in both;
+}
+
+@utility animate-grow-x {
+  animation: grow-x var(--grow-duration, 5500ms) linear both;
+}
+
+@utility animate-pop-in {
+  animation: pop-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility animate-dots-breathe {
+  animation: dots-breathe 7s ease-in-out infinite;
+}
+
+@utility animate-dock-glow {
+  animation: dock-glow 3.2s ease-in-out infinite;
+}
+
+@utility animate-shimmer {
+  animation: shimmer-slide 1.4s ease-in-out infinite;
+}
+
+/* --- notification bell shake --------------------------------------------- */
+
+@keyframes bell-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(12deg);
+  }
+  30% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(9deg);
+  }
+  60% {
+    transform: rotate(-9deg);
+  }
+  75% {
+    transform: rotate(5deg);
+  }
+  90% {
+    transform: rotate(-5deg);
+  }
+}
+
+@utility animate-bell-shake {
+  display: inline-flex;
+  animation: bell-shake 0.8s ease-in-out both;
+}
