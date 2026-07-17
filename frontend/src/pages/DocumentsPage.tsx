@@ -46,9 +46,10 @@ const ACCEPTED_TYPES = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
   "text/plain": [".txt"],
   "text/markdown": [".md"],
+  "application/sql": [".sql"],
 };
 
-const FORMAT_CHIPS = ["PDF", "CSV", "XLSX", "DOCX", "TXT", "MD"];
+const FORMAT_CHIPS = ["PDF", "CSV", "XLSX", "DOCX", "TXT", "MD", "SQL"];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -61,7 +62,7 @@ function FileTypeIcon({ fileName, className }: { fileName: string; className?: s
   if (ext === "csv" || ext === "xls" || ext === "xlsx") {
     return <HugeiconsIcon icon={Xls01Icon} className={className} />;
   }
-  if (ext === "md") {
+  if (ext === "md" || ext === "sql") {
     return <HugeiconsIcon icon={SourceCodeIcon} className={className} />;
   }
   return <HugeiconsIcon icon={File02Icon} className={className} />;
@@ -319,13 +320,23 @@ export default function DocumentsPage() {
               )}
             >
               <input {...getInputProps()} />
+              {/* Fanned document sheets built from theme tokens (no brand
+                  gradient) — the back sheet spreads apart while dragging. */}
               <div
                 className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-hero-from to-hero-to text-white shadow-lg shadow-hero-from/25 transition-transform duration-200 ease-in-out",
+                  "relative h-14 w-14 transition-transform duration-200 ease-in-out",
                   isDragActive && "scale-110",
                 )}
               >
-                <HugeiconsIcon icon={CloudUploadIcon} className="h-5 w-5" />
+                <div
+                  className={cn(
+                    "absolute inset-x-2 inset-y-1 -rotate-6 rounded-lg border border-border-soft bg-surface-muted transition-transform duration-200",
+                    isDragActive && "-rotate-12",
+                  )}
+                />
+                <div className="absolute inset-x-2 inset-y-1 flex rotate-3 items-center justify-center rounded-lg border border-border-soft bg-surface shadow-sm">
+                  <HugeiconsIcon icon={FileUploadIcon} className="h-5 w-5 text-ink-muted" />
+                </div>
               </div>
               <div className="flex flex-col gap-1">
                 <p className="text-lg font-semibold tracking-tight text-ink">

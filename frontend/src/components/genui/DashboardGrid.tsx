@@ -114,7 +114,12 @@ export function DashboardGrid({ uiSpec, data, editing = false, onLayoutChange }:
   let statCardCount = 0;
 
   return (
-    <div ref={containerRef} className={cn(editing && "rounded-card ring-2 ring-primary/30 ring-offset-4 ring-offset-canvas")}>
+    <div
+      ref={containerRef}
+      // Edit-mode affordance: a quiet dashed accent boundary (ring-primary
+      // doesn't exist as a token and rendered as a harsh white border).
+      className={cn(editing && "rounded-3xl outline-2 outline-dashed outline-offset-8 outline-accent-blue/40")}
+    >
       {mounted && (
         <GridLayout
           width={width}

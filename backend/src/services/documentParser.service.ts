@@ -38,7 +38,13 @@ export async function parseDocument(
     return parseDocx(buffer);
   }
 
-  if (mimetype === "text/markdown" || ext === "md" || mimetype === "text/plain" || ext === "txt") {
+  // .sql rides the plain-text path: the extraction planner is shape-driven
+  // and pulls records out of raw text (CREATE TABLE/INSERT statements included).
+  if (
+    mimetype === "text/markdown" || ext === "md" ||
+    mimetype === "text/plain" || ext === "txt" ||
+    mimetype === "application/sql" || mimetype === "application/x-sql" || ext === "sql"
+  ) {
     return { kind: "text", text: buffer.toString("utf-8") };
   }
 

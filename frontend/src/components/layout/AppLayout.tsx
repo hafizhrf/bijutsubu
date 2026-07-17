@@ -1,13 +1,33 @@
-import { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { useRef, useState } from "react";
+import { Outlet, useLocation, useSearchParams } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { SidebarLeft01Icon } from "@hugeicons/core-free-icons";
 import { MobileSidebar, Sidebar } from "@/components/layout/Sidebar";
+import { SettingsDialog, SETTINGS_SECTIONS } from "@/components/settings/SettingsDialog";
+import type { SettingsSection } from "@/components/settings/SettingsDialog";
 import { QueueIndicator } from "@/components/upload/QueueIndicator";
 
 export function AppLayout() {
   const { pathname } = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // The settings modal is URL-backed (?settings=<section>) so it can open on
+  // any protected page and deep links keep working. The last valid section is
+  // remembered so the close animation doesn't flash the default section.
+  const rawSection = searchParams.get("settings");
+  const settingsSection = SETTINGS_SECTIONS.includes(rawSection as SettingsSection)
+    ? (rawSection as SettingsSection)
+    : null;
+  const lastSectionRef = useRef<SettingsSection>("account");
+  if (settingsSection) lastSectionRef.current = settingsSection;
+
+  function setSettingsParam(section: SettingsSection | null) {
+    const next = new URLSearchParams(searchParams);
+    if (section) next.set("settings", section);
+    else next.delete("settings");
+    setSearchParams(next, { replace: true });
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-canvas">
@@ -27,6 +47,12 @@ export function AppLayout() {
         </div>
       </main>
       <QueueIndicator />
+      <SettingsDialog
+        open={settingsSection !== null}
+        section={settingsSection ?? lastSectionRef.current}
+        onSectionChange={(section) => setSettingsParam(section)}
+        onClose={() => setSettingsParam(null)}
+      />
     </div>
   );
 }

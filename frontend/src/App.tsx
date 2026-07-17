@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { BrandTransition } from "@/components/layout/BrandTransition";
@@ -10,11 +10,20 @@ import DashboardDetailPage from "@/pages/DashboardDetailPage";
 import CollectionsPage from "@/pages/CollectionsPage";
 import LogsPage from "@/pages/LogsPage";
 import KnowledgePage from "@/pages/KnowledgePage";
-import SettingsPage from "@/pages/SettingsPage";
 import OverviewPage from "@/pages/OverviewPage";
+import PricingPage from "@/pages/PricingPage";
+import { SETTINGS_SECTIONS } from "@/components/settings/SettingsDialog";
 // Imported for its side effect too: rehydration applies the saved theme
 // before any route renders.
 import "@/store/settingsStore";
+
+/** Back-compat: the old /settings page now opens as a modal via ?settings=. */
+function SettingsRedirect() {
+  const [params] = useSearchParams();
+  const section = params.get("section") ?? "account";
+  const valid = (SETTINGS_SECTIONS as readonly string[]).includes(section) ? section : "account";
+  return <Navigate to={`/overview?settings=${valid}`} replace />;
+}
 
 function App() {
   return (
@@ -32,7 +41,8 @@ function App() {
             <Route path="/collections" element={<CollectionsPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
             <Route path="/logs" element={<LogsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/settings" element={<SettingsRedirect />} />
           </Route>
         </Route>
 

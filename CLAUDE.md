@@ -8,7 +8,7 @@ current code and update the documentation if the mismatch matters.
 
 Bijustubu is a per-user data workspace. Users can:
 
-- import CSV, Excel, PDF, DOCX, and text into structured MongoDB collections;
+- import CSV, Excel, PDF, DOCX, SQL, and text into structured MongoDB collections;
 - edit rows, fields, collection metadata, and relations;
 - generate and refine saved dashboards from natural-language prompts;
 - upload documents to a Dify-backed knowledge base and chat over retrieved excerpts;
@@ -51,8 +51,11 @@ There is no automated test suite. Do not describe typecheck, lint, or build as t
 
 The frontend public routes are `/login` and `/register`. Protected routes use `ProtectedRoute` and
 `AppLayout`: `/overview`, `/documents`, `/collections`, `/dashboard`, `/dashboard/:id`, `/knowledge`,
-`/logs`, and `/settings`. `/overview` is the default authenticated route; `/analytics` redirects to
-`/dashboard` for compatibility.
+`/logs`, and `/pricing`. `/overview` is the default authenticated route; `/analytics` redirects to
+`/dashboard` for compatibility. Settings is not a page: `SettingsDialog` (ChatGPT-style modal with
+Account, Plan, Appearance, and Notifications sections) opens on any protected page via the
+`?settings=<section>` URL param owned by `AppLayout`; the legacy `/settings` route redirects into it.
+`/pricing` and the Plan section are placeholder monetization UI — no billing backend exists.
 
 ## Tenant and data architecture
 
@@ -166,10 +169,10 @@ upload, dashboard, knowledge, and insight jobs.
 that do not yet contain `displayName` or `createdAt`. Profile name and password changes use the shared
 Axios client through `src/api/auth.ts`; email is read-only in the current UI.
 
-Settings use URL-backed Account, Appearance, and Notifications sections. Theme, pinned-sidebar, and
-notification preferences are device-local Zustand state. The sidebar groups primary workspace routes
-separately from Activity and Settings, exposes a profile popover, and has a mobile drawer. Collections
-and Relations also use URL-backed tabs.
+Theme, pinned-sidebar, and notification preferences are device-local Zustand state, edited in the
+`SettingsDialog` modal (see "Runtime surface"). The sidebar groups primary workspace routes separately
+from Activity and Settings (a modal-opening button, not a route), exposes a profile popover, and has a
+mobile drawer. Collections and Relations use URL-backed tabs.
 
 Runtime themes set `--color-sidebar`, `--color-sidebar-hover`, `--color-sidebar-ink`, and
 `--color-accent-blue`. Use Tailwind tokens `sidebar`, `sidebar-hover`, `sidebar-ink`, and `accent-blue`

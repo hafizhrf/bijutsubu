@@ -210,10 +210,25 @@ export async function listSavedDashboards(req: Request, res: Response) {
   const conn = getUserConnection(req.userDbName!);
   const MetaDashboard = getMetaDashboardModel(conn);
   const dashboards = await MetaDashboard.find()
-    .select("_id title prompt createdAt")
+    .select("_id title prompt createdAt uiSpec.widgets.type uiSpec.widgets.grid")
     .sort({ createdAt: -1 })
     .lean();
-  res.status(200).json({ dashboards });
+  // Compact per-widget layout signature so the list can draw thumbnails —
+  // never the full stored spec.
+  const summaries = dashboards.map((dashboard) => {
+    const spec = (dashboard as { uiSpec?: { widgets?: { type?: unknown; grid?: unknown }[] } }).uiSpec;
+    const widgets = (Array.isArray(spec?.widgets) ? spec.widgets : [])
+      .filter((widget) => typeof widget?.type === "string")
+      .map((widget) => ({ type: widget.type as string, grid: widget.grid ?? null }));
+    return {
+      _id: dashboard._id,
+      title: dashboard.title,
+      prompt: dashboard.prompt,
+      createdAt: dashboard.createdAt,
+      widgets,
+    };
+  });
+  res.status(200).json({ dashboards: summaries });
 }
 
 export async function getSavedDashboard(req: Request, res: Response) {

@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { DashboardThumbnail } from "@/components/genui/DashboardThumbnail";
 import { PromptDock } from "@/components/genui/PromptDock";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -205,9 +206,7 @@ function SavedRow({ dashboard }: { dashboard: SavedDashboardSummary }) {
 
   return (
     <li className="group flex animate-fade-in items-center gap-3 rounded-2xl border border-border-soft bg-surface p-4 transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/5">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-hero-from to-hero-to text-white">
-        <HugeiconsIcon icon={SparklesIcon} className="h-4 w-4" />
-      </div>
+      <DashboardThumbnail widgets={dashboard.widgets} className="h-12 w-[4.25rem]" />
 
       <div className="min-w-0 flex-1">
         {editing ? (

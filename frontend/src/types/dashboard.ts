@@ -153,11 +153,19 @@ export interface RejectedResponse {
   category: RejectionCategory;
 }
 
+/** Compact per-widget layout signature used to draw list thumbnails. */
+export interface SavedDashboardWidgetSummary {
+  type: Widget["type"];
+  grid: GridRect | null;
+}
+
 export interface SavedDashboardSummary {
   _id: string;
   title: string;
   prompt: string;
   createdAt: string;
+  /** Optional: absent in cached responses from before thumbnails existed. */
+  widgets?: SavedDashboardWidgetSummary[];
 }
 
 export interface DashboardChatMessage {

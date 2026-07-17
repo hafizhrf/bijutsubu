@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { ReactNode } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Activity01Icon, BookOpen01Icon, CloudUploadIcon, DashboardCircleIcon, Database01Icon, Logout03Icon, Settings02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
@@ -18,10 +18,7 @@ const primaryItems = [
   { to: "/dashboard", label: "Dashboards", hint: "Build visual reports", icon: DashboardCircleIcon },
   { to: "/knowledge", label: "Knowledge Base", hint: "Grounded document chat", icon: BookOpen01Icon },
 ];
-const utilityItems = [
-  { to: "/logs", label: "Activity", icon: Activity01Icon },
-  { to: "/settings?section=appearance", label: "Settings", icon: Settings02Icon },
-];
+const utilityItems = [{ to: "/logs", label: "Activity", icon: Activity01Icon }];
 const SNAPPY = "cubic-bezier(0.16,1,0.3,1)";
 
 function RailLabel({ children, className, visible }: { children: ReactNode; className?: string; visible: boolean }) {
@@ -63,20 +60,40 @@ function NavRows({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () 
 }
 
 function UtilityRows({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
-  const activeIndex = useActiveIndex(utilityItems);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const routeActiveIndex = useActiveIndex(utilityItems);
+  // Settings is not a route — it opens the URL-param-backed settings modal.
+  const settingsOpen = searchParams.has("settings");
+  const activeIndex = settingsOpen ? utilityItems.length : routeActiveIndex;
+  const openSettings = () => {
+    const next = new URLSearchParams(searchParams);
+    next.set("settings", "appearance");
+    setSearchParams(next, { replace: true });
+    onNavigate?.();
+  };
   return <nav className="relative flex flex-col gap-1">
     <SlidingPill activeIndex={activeIndex} stride={48} className="h-11 rounded-2xl bg-sidebar-ink/10" />
     {utilityItems.map(({ to, label, icon }) => (
-      <NavLink key={to} to={to} onClick={onNavigate} title={expanded ? undefined : label} className={({ isActive }) => cn("relative flex h-11 items-center rounded-2xl transition-colors duration-300", isActive ? "text-sidebar-ink" : "text-sidebar-ink/60 hover:bg-sidebar-ink/10 hover:text-sidebar-ink")}>
+      <NavLink key={to} to={to} onClick={onNavigate} title={expanded ? undefined : label} className={({ isActive }) => cn("relative flex h-11 items-center rounded-2xl transition-colors duration-300", isActive && !settingsOpen ? "text-sidebar-ink" : "text-sidebar-ink/60 hover:bg-sidebar-ink/10 hover:text-sidebar-ink")}>
         <span className="flex h-11 w-12 shrink-0 items-center justify-center"><HugeiconsIcon icon={icon} size={18} /></span><RailLabel visible={expanded}>{label}</RailLabel>
       </NavLink>
     ))}
+    <button type="button" onClick={openSettings} title={expanded ? undefined : "Settings"} className={cn("relative flex h-11 items-center rounded-2xl transition-colors duration-300", settingsOpen ? "text-sidebar-ink" : "text-sidebar-ink/60 hover:bg-sidebar-ink/10 hover:text-sidebar-ink")}>
+      <span className="flex h-11 w-12 shrink-0 items-center justify-center"><HugeiconsIcon icon={Settings02Icon} size={18} /></span><RailLabel visible={expanded}>Settings</RailLabel>
+    </button>
   </nav>;
 }
 
 function ProfileMenu({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout } = useAuthStore();
+  const openAccountSettings = () => {
+    onNavigate?.();
+    const next = new URLSearchParams(searchParams);
+    next.set("settings", "account");
+    setSearchParams(next, { replace: true });
+  };
   const initial = (user?.displayName || user?.email || "?")[0]?.toUpperCase() ?? "?";
   const signOut = () => {
     onNavigate?.();
@@ -90,7 +107,7 @@ function ProfileMenu({ expanded, onNavigate }: { expanded: boolean; onNavigate?:
       <RailLabel visible={expanded} className="min-w-0"><span className="block max-w-36 truncate text-sm text-sidebar-ink">{user?.displayName || user?.email?.split("@")[0]}</span><span className="block max-w-36 truncate text-[11px] font-normal text-sidebar-ink/55">{user?.email}</span></RailLabel>
     </button></DropdownMenuTrigger>
     <DropdownMenuContent side="right" align="end" className="w-56">
-      <DropdownMenuItem onSelect={() => { onNavigate?.(); navigate("/settings?section=account"); }}><HugeiconsIcon icon={Settings02Icon} className="mr-2 h-4 w-4" /> Account settings</DropdownMenuItem>
+      <DropdownMenuItem onSelect={openAccountSettings}><HugeiconsIcon icon={Settings02Icon} className="mr-2 h-4 w-4" /> Account settings</DropdownMenuItem>
       <DropdownMenuItem onSelect={signOut} className="text-rose-600"><HugeiconsIcon icon={Logout03Icon} className="mr-2 h-4 w-4" /> Log out</DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>;

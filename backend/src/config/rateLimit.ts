@@ -31,6 +31,10 @@ export const ALLOWED_UPLOAD_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "text/plain",
   "text/markdown",
+  // Browsers often send .sql as application/octet-stream; the extension
+  // entry below is what actually admits those files (mime OR ext check).
+  "application/sql",
+  "application/x-sql",
 ]);
 
 export const ALLOWED_UPLOAD_EXTENSIONS = new Set([
@@ -41,6 +45,7 @@ export const ALLOWED_UPLOAD_EXTENSIONS = new Set([
   ".docx",
   ".txt",
   ".md",
+  ".sql",
 ]);
 
 // Knowledge-base uploads go straight to Dify (not through documentParser), so

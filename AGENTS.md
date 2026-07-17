@@ -70,7 +70,8 @@ Frontend flow and ownership:
 - `src/components/datagrid/` and `src/components/relations/` implement collection editing and relationship management.
 - `src/components/ui/` contains reusable shadcn-style primitives.
 - `src/pages/OverviewPage.tsx` is the authenticated landing page; deterministic workspace findings come from `/api/overview`, while on-demand AI snapshots use a persisted, idempotent insight job.
-- `src/components/layout/Sidebar.tsx` owns grouped desktop navigation, the profile menu, and the mobile drawer. Core routes stay flat; Collections, Knowledge, and Settings use URL-backed in-page tabs. The active-row highlight is a shared sliding pill whose offset math depends on the fixed row heights/gaps in that file.
+- `src/components/layout/Sidebar.tsx` owns grouped desktop navigation, the profile menu, and the mobile drawer. Core routes stay flat; Collections and Knowledge use URL-backed in-page tabs. The active-row highlight is a shared sliding pill whose offset math depends on the fixed row heights/gaps in that file.
+- `src/components/settings/SettingsDialog.tsx` is the settings surface (modal, not a page): sections Account/Plan/Appearance/Notifications, opened via the `?settings=<section>` param that `AppLayout` owns; the legacy `/settings` route redirects into it. The Plan section and `src/pages/PricingPage.tsx` are placeholder monetization UI with no backend.
 - `src/components/layout/BrandMark.tsx` renders the product logo as a CSS mask so it recolors with the theme; `BrandTransition.tsx` is the login/logout overlay whose `onCovered` callback performs the real navigation/logout while the screen is covered.
 - `src/store/uploadQueueStore.ts`, `generationQueueStore.ts`, `knowledgeChatJobStore.ts`, and `insightJobStore.ts` own navigation-safe background work. Stable request IDs are part of their backend idempotency contracts.
 - Use the `@/*` alias for imports rooted at `frontend/src/*`.
