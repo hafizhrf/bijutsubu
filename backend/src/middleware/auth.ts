@@ -32,7 +32,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
+  if (user.suspendedAt) { res.status(403).json({ error: "account_suspended" }); return; }
+
   req.userId = user._id.toString();
+  req.userEmail = user.email;
   req.userDbName = user.dbName;
   next();
 }
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) { if (!req.userEmail || !env.ADMIN_EMAILS.includes(req.userEmail.toLowerCase())) { res.status(403).json({ error: 'admin_required' }); return; } next(); }

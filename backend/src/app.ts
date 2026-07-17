@@ -9,6 +9,8 @@ import { activityRouter } from "./routes/activity.routes.js";
 import { knowledgeRouter } from "./routes/knowledge.routes.js";
 import { overviewRouter } from "./routes/overview.routes.js";
 import { insightsRouter } from "./routes/insights.routes.js";
+import { sourcesRouter } from "./routes/sources.routes.js";
+import { adminRouter } from "./routes/admin.routes.js";
 
 export const app = express();
 
@@ -25,6 +27,8 @@ app.use("/api/activity", activityRouter);
 app.use("/api/knowledge", knowledgeRouter);
 app.use("/api/overview", overviewRouter);
 app.use("/api/insights", insightsRouter);
+app.use("/api/sources", sourcesRouter);
+app.use("/api/admin", adminRouter);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "not_found" });

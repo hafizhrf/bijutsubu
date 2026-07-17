@@ -37,7 +37,11 @@ export interface OverviewResponse {
   };
   findings: OverviewFinding[];
   recentActivity: ActivityEntry[];
-  serviceStatus: { knowledge: "ready" | "empty" | "unavailable" };
+  serviceStatus: {
+    knowledge: "ready" | "empty" | "unavailable";
+    /** Connected external database sources: none configured, all ok, or ≥1 failing. */
+    sources: "none" | "ok" | "error";
+  };
   aiSnapshot: InsightSnapshot | null;
   dataFingerprint: string;
 }

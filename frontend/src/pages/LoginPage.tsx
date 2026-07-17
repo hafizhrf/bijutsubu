@@ -6,6 +6,7 @@ import { useAuthStore } from "@/store/authStore";
 import { AuthFormCard } from "@/components/auth/AuthFormCard";
 import { AuthShowcase } from "@/components/auth/AuthShowcase";
 import { playBrandTransition } from "@/components/layout/BrandTransition";
+import { isAxiosError } from "axios";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -24,8 +25,8 @@ export default function LoginPage() {
       const { token, user } = await login(email, password);
       setAuth(token, user);
       playBrandTransition(() => navigate("/overview"));
-    } catch {
-      setError("Could not sign in. Check your credentials and try again.");
+    } catch (error) {
+      setError(isAxiosError(error) && error.response?.data?.error === "account_suspended" ? "This account has been suspended. Contact your workspace administrator." : "Could not sign in. Check your credentials and try again.");
     } finally {
       setIsSubmitting(false);
     }

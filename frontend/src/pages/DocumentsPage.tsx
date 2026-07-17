@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SourcesPanel } from "@/components/sources/SourcesPanel";
 import { useDropzone } from "react-dropzone";
 import { useQuery } from "@tanstack/react-query";
 import { getCollections } from "@/api/collections";
@@ -292,9 +294,13 @@ export default function DocumentsPage() {
   }, [hasTicking]);
 
   const doneCount = items.filter((item) => item.status === "done").length;
+  const activeCount = items.filter((item) => ["queued", "uploading", "waiting", "needs-decision"].includes(item.status)).length;
   const hasFinished = items.some(
     (item) => item.status === "done" || item.status === "error" || item.status === "canceled",
   );
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get("tab") === "sources" ? "sources" : "uploads";
 
   const collectionsQuery = useQuery({ queryKey: ["collections"], queryFn: getCollections });
   const uploadHistoryQuery = useQuery({
@@ -307,6 +313,25 @@ export default function DocumentsPage() {
     <div>
       <TopBar title="Documents" />
 
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          const next = new URLSearchParams(searchParams);
+          if (value === "uploads") next.delete("tab");
+          else next.set("tab", value);
+          setSearchParams(next, { replace: true });
+        }}
+      >
+        <TabsList className="mb-5 max-w-full overflow-x-auto">
+          <TabsTrigger value="uploads">Uploads</TabsTrigger>
+          <TabsTrigger value="sources">Sources</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="sources" className="mt-0">
+          <SourcesPanel />
+        </TabsContent>
+
+        <TabsContent value="uploads" className="mt-0">
       <Card>
         <CardContent className="p-6 sm:p-8">
           <div className="grid gap-6 lg:grid-cols-2">
@@ -436,7 +461,7 @@ export default function DocumentsPage() {
             <div className="flex flex-col gap-1.5">
               <CardTitle>Upload queue</CardTitle>
               <CardDescription>
-                {doneCount} of {items.length} uploaded · one file per minute, handled for you
+                {activeCount > 0 ? `${activeCount} active ${activeCount === 1 ? "upload" : "uploads"}` : "No active uploads"}{doneCount > 0 ? ` · ${doneCount} uploaded` : ""} · one file per minute, handled for you
               </CardDescription>
             </div>
             {hasFinished && (
@@ -447,7 +472,7 @@ export default function DocumentsPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <ul className="flex flex-col gap-3">
-              {items.map((item, index) => (
+              {[...items].sort((a, b) => b.addedAt - a.addedAt).map((item, index) => (
                 <QueueRow
                   key={item.id}
                   item={item}
@@ -524,6 +549,8 @@ export default function DocumentsPage() {
           />
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -19,13 +19,34 @@ const metaCollectionSchema = new Schema(
     name: { type: String, required: true, unique: true },
     displayName: { type: String, required: true },
     fields: { type: [fieldDefSchema], default: [] },
+    // Optional since external-data-source collections have no file origin.
     sourceFile: {
-      originalName: { type: String, required: true },
-      mimetype: { type: String, required: true },
-      sizeBytes: { type: Number, required: true },
-      uploadedAt: { type: Date, required: true },
+      type: new Schema(
+        {
+          originalName: { type: String, required: true },
+          mimetype: { type: String, required: true },
+          sizeBytes: { type: Number, required: true },
+          uploadedAt: { type: Date, required: true },
+        },
+        { _id: false },
+      ),
+      default: null,
     },
-    createdVia: { type: String, enum: ["auto", "instruction"], required: true },
+    /** Set when this collection mirrors a table from a connected database. */
+    source: {
+      type: new Schema(
+        {
+          sourceId: { type: String, required: true },
+          sourceName: { type: String, required: true },
+          engine: { type: String, required: true },
+          table: { type: String, required: true },
+          lastSyncedAt: { type: Date, default: null },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
+    createdVia: { type: String, enum: ["auto", "instruction", "datasource"], required: true },
     instructionText: { type: String, default: null },
     upsertKey: { type: String, default: null },
     rowCount: { type: Number, default: 0 },

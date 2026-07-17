@@ -9,6 +9,8 @@ import {
   updateCollectionMeta,
 } from "@/api/collections";
 import { DependencyNote } from "@/components/ui/dependency-note";
+import { getSources } from "@/api/sources";
+import type { DataSource } from "@/api/sources";
 import type { MetaCollection } from "@/types/collections";
 import { TopBar } from "@/components/layout/TopBar";
 import { RelationsTab } from "@/components/relations/RelationsTab";
@@ -38,6 +40,7 @@ import emptyAstronaut from "@/assets/lottie/empty-astronaut.lottie";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowRight01Icon,
+  CloudServerIcon,
   Database01Icon,
   Delete02Icon,
   Loading03Icon,
@@ -66,12 +69,11 @@ interface CollectionRailProps {
   collections: MetaCollection[];
   selected: string | null;
   onSelect: (name: string) => void;
+  sources: DataSource[];
 }
 
-function CollectionRail({ collections, selected, onSelect }: CollectionRailProps) {
+function CollectionRail({ collections, sources, selected, onSelect }: CollectionRailProps) {
   const [search, setSearch] = useState("");
-  // Expanded field panels — independent of selection so clicking a collection
-  // never auto-expands its properties.
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
@@ -83,6 +85,22 @@ function CollectionRail({ collections, selected, onSelect }: CollectionRailProps
         collection.name.toLowerCase().includes(query),
     );
   }, [collections, search]);
+
+  const localCollections = filtered.filter((collection) => !collection.source);
+  const sourceGroups = useMemo(() => {
+    const grouped = new Map<string, MetaCollection[]>();
+    for (const collection of filtered) {
+      if (!collection.source) continue;
+      const current = grouped.get(collection.source.sourceId) ?? [];
+      current.push(collection);
+      grouped.set(collection.source.sourceId, current);
+    }
+    return [...grouped.entries()].map(([sourceId, sourceCollections]) => ({
+      sourceId,
+      source: sources.find((item) => item._id === sourceId) ?? null,
+      collections: sourceCollections,
+    }));
+  }, [filtered, sources]);
 
   function toggleExpanded(name: string) {
     setExpanded((prev) => {
@@ -100,7 +118,7 @@ function CollectionRail({ collections, selected, onSelect }: CollectionRailProps
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search collections…"
+          placeholder="Search collections..."
           className="h-9 w-full rounded-full border border-border-soft bg-surface pl-9 pr-4 text-sm text-ink placeholder:text-ink-muted transition-[border-color,box-shadow] duration-200 focus:outline-none focus-visible:border-accent-blue/40 focus-visible:ring-2 focus-visible:ring-accent-blue/50"
         />
       </div>
@@ -109,69 +127,64 @@ function CollectionRail({ collections, selected, onSelect }: CollectionRailProps
         {filtered.length === 0 ? (
           <p className="px-3 py-6 text-center text-xs text-ink-muted">No collections match.</p>
         ) : (
-          filtered.map((collection, index) => {
-            const isActive = collection.name === selected;
-            const isExpanded = expanded.has(collection.name);
-            return (
-              <div
-                key={collection._id}
-                style={{ "--stagger": `${Math.min(index, 8) * 30}ms` } as React.CSSProperties}
-                className="animate-fade-in"
-              >
-                <div
-                  className={cn(
-                    "flex w-full items-center rounded-xl transition-colors duration-150",
-                    isActive ? "bg-sidebar text-sidebar-ink" : "text-ink hover:bg-surface-muted",
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onSelect(collection.name)}
-                    title={`${collection.displayName} (${collection.name}) · ${collection.rowCount.toLocaleString()} rows`}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 rounded-l-xl px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/50"
-                  >
-                    <span
-                      className={cn(
-                        "h-1.5 w-1.5 shrink-0 rounded-full",
-                        collectionDotClass(collection.name),
-                      )}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                      {collection.displayName}
-                    </span>
-                    <span className="shrink-0 text-xs tabular-nums text-ink-muted">
-                      {collection.rowCount.toLocaleString()}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleExpanded(collection.name)}
-                    title={isExpanded ? "Hide fields" : "Show fields"}
-                    className={cn(
-                      "mr-1.5 shrink-0 rounded-lg p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/50",
-                      isActive
-                        ? "text-white/60 hover:bg-white/10 hover:text-white"
-                        : "text-ink-muted hover:bg-border-soft/60 hover:text-ink",
-                    )}
-                  >
-                    <HugeiconsIcon icon={ArrowRight01Icon}
-                      className={cn(
-                        "h-3.5 w-3.5 transition-transform duration-150",
-                        isExpanded && "rotate-90",
-                      )}
-                    />
-                  </button>
+          <>
+            {localCollections.length > 0 && (
+              <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Bijustubu</p>
+            )}
+            {localCollections.map((collection, index) => {
+              const isActive = collection.name === selected;
+              const isExpanded = expanded.has(collection.name);
+              return (
+                <div key={collection._id} style={{ "--stagger": `${Math.min(index, 8) * 30}ms` } as React.CSSProperties} className="animate-fade-in">
+                  <div className={cn("flex w-full items-center rounded-xl transition-colors duration-150", isActive ? "bg-sidebar text-sidebar-ink" : "text-ink hover:bg-surface-muted")}>
+                    <button type="button" onClick={() => onSelect(collection.name)} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-l-xl px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/50">
+                      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", collectionDotClass(collection.name))} />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{collection.displayName}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-ink-muted">{collection.rowCount.toLocaleString()}</span>
+                    </button>
+                    <button type="button" onClick={() => toggleExpanded(collection.name)} title={isExpanded ? "Hide fields" : "Show fields"} className={cn("mr-1.5 shrink-0 rounded-lg p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/50", isActive ? "text-white/60 hover:bg-white/10 hover:text-white" : "text-ink-muted hover:bg-border-soft/60 hover:text-ink")}>
+                      <HugeiconsIcon icon={ArrowRight01Icon} className={cn("h-3.5 w-3.5 transition-transform duration-150", isExpanded && "rotate-90")} />
+                    </button>
+                  </div>
+                  {isExpanded && <FieldList collection={collection} />}
                 </div>
-                {isExpanded && <FieldList collection={collection} />}
-              </div>
-            );
-          })
+              );
+            })}
+
+            {sourceGroups.map(({ sourceId, source, collections: sourceCollections }) => {
+              const fallback = sourceCollections[0].source!;
+              const label = source ? `${source.name} - ${source.database}:${source.port}` : fallback.sourceName;
+              return (
+                <details key={sourceId} className="mt-2 overflow-hidden rounded-xl border border-accent-blue/15 bg-accent-blue/[0.035]">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-left marker:content-none hover:bg-accent-blue/[0.06]">
+                    <HugeiconsIcon icon={CloudServerIcon} className="h-4 w-4 shrink-0 text-accent-blue" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-xs font-semibold text-ink">{label}</span>
+                      <span className="block text-[10px] text-ink-muted">{sourceCollections.length} imported collections</span>
+                    </span>
+                    <HugeiconsIcon icon={ArrowRight01Icon} className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+                  </summary>
+                  <div className="border-t border-accent-blue/10 px-1.5 py-1">
+                    {sourceCollections.map((collection) => {
+                      const isActive = collection.name === selected;
+                      return (
+                        <button key={collection._id} type="button" onClick={() => onSelect(collection.name)} className={cn("flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors", isActive ? "bg-sidebar text-sidebar-ink" : "text-ink hover:bg-surface-muted")}>
+                          <HugeiconsIcon icon={CloudServerIcon} className={cn("h-3 w-3 shrink-0", isActive ? "text-sidebar-ink/70" : "text-accent-blue")} />
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium">{collection.displayName}</span>
+                          <span className={cn("text-xs tabular-nums", isActive ? "text-sidebar-ink/70" : "text-ink-muted")}>{collection.rowCount.toLocaleString()}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </details>
+              );
+            })}
+          </>
         )}
       </div>
     </div>
   );
 }
-
 interface WorkspaceHeaderProps {
   collection: MetaCollection;
   onAddRow: () => void;
@@ -322,6 +335,12 @@ function WorkspaceHeader({ collection, onAddRow, addRowDisabled }: WorkspaceHead
             {collection.fields.length.toLocaleString()} fields
           </p>
           {error && <p className="mt-0.5 animate-fade-in text-xs text-rose-600">{error}</p>}
+          {collection.source && (
+            <p className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-full bg-accent-blue/10 px-2 py-0.5 text-[11px] font-medium text-accent-blue" title={`Synced from ${collection.source.sourceName}, table ${collection.source.table}`}>
+              <HugeiconsIcon icon={CloudServerIcon} className="h-3 w-3 shrink-0" />
+              <span className="truncate">Live source from {collection.source.sourceName} / {collection.source.table}</span>
+            </p>
+          )}
         </div>
       </div>
 
@@ -408,10 +427,12 @@ function CollectionWorkspace({ collection }: CollectionWorkspaceProps) {
 
 function CollectionsTab() {
   const collectionsQuery = useQuery({ queryKey: ["collections"], queryFn: getCollections });
+  const sourcesQuery = useQuery({ queryKey: ["sources"], queryFn: getSources });
   const [searchParams, setSearchParams] = useSearchParams();
   const [selected, setSelected] = useState<string | null>(null);
 
   const collections = collectionsQuery.data ?? [];
+  const sources = sourcesQuery.data ?? [];
   const paramName = searchParams.get("c");
 
   useEffect(() => {
@@ -481,7 +502,7 @@ function CollectionsTab() {
     <Card className="animate-fade-in-up overflow-hidden">
       <div className="flex flex-col lg:flex-row">
         <aside className="shrink-0 border-b border-border-soft bg-surface-muted/30 p-4 lg:w-[264px] lg:border-b-0 lg:border-r">
-          <CollectionRail collections={collections} selected={selected} onSelect={handleSelect} />
+          <CollectionRail collections={collections} sources={sources} selected={selected} onSelect={handleSelect} />
         </aside>
 
         <div className="min-w-0 flex-1 p-5">

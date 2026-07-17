@@ -1,0 +1,7 @@
+import { api } from "@/lib/api";
+export type AdminUser={id:string;email:string;displayName:string;createdAt:string;suspendedAt:string|null;suspensionReason:string|null};
+export type AdminMetrics={users:number;suspendedUsers:number;collections:number;dashboards:number;sources:number;sourceErrors:number};
+export type AdminSource={id:string;name:string;engine:string;database:string;port:number;lastSyncAt:string|null;lastSyncStatus:string;lastSyncError:string|null;tableCount:number}; export async function getAdminOverview(){return (await api.get("/admin/overview")).data as {metrics:AdminMetrics;recentUsers:{user:AdminUser;metrics:{collections:number;rows:number;dashboards:number;sources:number}}[];failingSources:{user:AdminUser;source:AdminSource}[];sourceHealth:{user:AdminUser;source:AdminSource}[];suspendedAccounts:AdminUser[]};}
+export async function getAdminUsers(q="",page=1){return (await api.get("/admin/users",{params:{q,page}})).data as {items:{user:AdminUser;metrics:{collections:number;rows:number;dashboards:number;sources:number}}[];page:number;pageSize:number;total:number};}
+export async function suspendAdminUser(id:string,reason:string){return (await api.post(`/admin/users/${id}/suspend`,{reason})).data;}
+export async function activateAdminUser(id:string){return (await api.post(`/admin/users/${id}/activate`)).data;}

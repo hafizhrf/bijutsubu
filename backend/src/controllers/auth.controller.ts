@@ -26,12 +26,15 @@ function userDto(user: {
   email: string;
   displayName?: string | null;
   createdAt?: Date;
+  suspendedAt?: Date | null;
 }) {
   return {
     id: user._id.toString(),
     email: user.email,
     displayName: user.displayName?.trim() || user.email.split("@")[0],
     createdAt: user.createdAt ?? new Date(),
+    isAdmin: env.ADMIN_EMAILS.includes(user.email.toLowerCase()),
+    isSuspended: Boolean(user.suspendedAt),
   };
 }
 
@@ -82,6 +85,8 @@ export async function login(req: Request, res: Response) {
     res.status(401).json({ error: "invalid_credentials" });
     return;
   }
+
+  if (user.suspendedAt) { res.status(403).json({ error: "account_suspended" }); return; }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {

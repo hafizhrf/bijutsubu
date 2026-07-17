@@ -52,8 +52,17 @@ export interface MetaCollection {
   name: string;
   displayName: string;
   fields: CollectionField[];
-  sourceFile: CollectionSourceFile;
-  createdVia: "auto" | "instruction";
+  /** Null for collections mirrored from a connected database source. */
+  sourceFile: CollectionSourceFile | null;
+  /** Set when this collection is synced from a connected database. */
+  source: {
+    sourceId: string;
+    sourceName: string;
+    engine: string;
+    table: string;
+    lastSyncedAt: string | null;
+  } | null;
+  createdVia: "auto" | "instruction" | "datasource";
   instructionText: string | null;
   upsertKey: string | null;
   rowCount: number;

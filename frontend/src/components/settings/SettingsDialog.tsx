@@ -154,7 +154,8 @@ const PLAN_LIMITS = [
 ] as const;
 
 function PlanSection({ onUpgrade }: { onUpgrade: () => void }) {
-  const usageQuery = useQuery({ queryKey: ["overview"], queryFn: getOverview });
+  // Usage must be current when this section opens; the Overview cache may be fresh but stale after a background import/sync.
+  const usageQuery = useQuery({ queryKey: ["overview"], queryFn: getOverview, refetchOnMount: "always" });
   const metrics = usageQuery.data?.metrics;
 
   return <div className="space-y-5">

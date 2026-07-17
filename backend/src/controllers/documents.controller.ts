@@ -21,6 +21,8 @@ import {
 } from "../models/pendingUpload.model.js";
 import { markRateLimitSuccess } from "../middleware/rateLimit.js";
 import { logActivity } from "../services/activityLog.service.js";
+
+const FREE_COLLECTION_LIMIT = 20;
 import { ExtractionPlan } from "../schemas/extractionPlan.schema.js";
 import { FIELD_NAME_PATTERN, FieldTypeEnum } from "../schemas/fieldCommon.js";
 import { SimilarityCandidate } from "../services/similarityDetector.service.js";
@@ -449,6 +451,12 @@ export async function applyUpload(req: Request, res: Response) {
       };
     });
 
+    const newCollectionCount = plans.filter((plan) => plan.action === "create").length;
+    if (currentNames.size + newCollectionCount > FREE_COLLECTION_LIMIT) {
+      res.status(409).json({ error: "collection_limit_reached", limit: FREE_COLLECTION_LIMIT });
+      return;
+    }
+
     const chunks = await PendingUploadRows.find({ pendingId: pending._id })
       .sort({ tableIndex: 1, seq: 1 })
       .lean();
@@ -548,6 +556,12 @@ export async function applyUpload(req: Request, res: Response) {
       duplicateStrategy = decision.data.duplicateStrategy;
       break;
     }
+  }
+
+  const targetExists = await MetaCollection.exists({ name: plan.targetCollection });
+  if (!targetExists && (await MetaCollection.countDocuments()) >= FREE_COLLECTION_LIMIT) {
+    res.status(409).json({ error: "collection_limit_reached", limit: FREE_COLLECTION_LIMIT });
+    return;
   }
 
   const chunks = await PendingUploadRows.find({ pendingId: pending._id })

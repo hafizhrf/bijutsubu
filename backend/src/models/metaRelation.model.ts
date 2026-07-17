@@ -12,7 +12,11 @@ const metaRelationSchema = new Schema(
       required: true,
     },
     description: { type: String, required: true },
-    createdVia: { type: String, enum: ["upload-instruction", "nl-prompt", "manual"], required: true },
+    createdVia: {
+      type: String,
+      enum: ["upload-instruction", "nl-prompt", "manual", "datasource"],
+      required: true,
+    },
   },
   { timestamps: true, collection: "_meta_relations" },
 );

@@ -57,8 +57,9 @@ export const CollectionNode = memo(function CollectionNode({
 }: NodeProps<CollectionFlowNode>) {
   const { collection, connectedFields } = data;
   const { visible, hiddenCount } = selectVisibleFields(collection.fields, connectedFields);
-  // _id leads the list and is never truncated away.
-  const rows = [ID_FIELD, ...visible.filter((field) => field.name !== "_id")];
+  const missingConnectedFields = connectedFields.filter((name) => name !== "_id" && !collection.fields.some((field) => field.name === name));
+  // Missing endpoints remain visible so imported legacy relations are diagnosable.
+  const rows = [ID_FIELD, ...visible.filter((field) => field.name !== "_id"), ...missingConnectedFields.map((name) => ({ name, type: "missing" }))];
 
   return (
     <div

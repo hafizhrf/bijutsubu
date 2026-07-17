@@ -116,6 +116,16 @@ The LLM emits `QueryDSL`, never Mongo aggregation JSON. `genUI.pipelineBuilder.s
 - Preserve the 12-column grid contract shared by generated specs and frontend layout resolution.
 - `html` widgets must remain static and query-free, sanitized server-side with `sanitize-html`, sanitized client-side with DOMPurify, and rendered in the existing isolated shadow-root path. Never allow scripts, iframes, event handlers, or executable URLs.
 
+### External data sources
+
+Connected DB servers (MySQL/MariaDB, PostgreSQL, MongoDB) sync read-only into per-user collections.
+
+- Never return, log, or echo source credentials; `encryptedPassword` stays server-side (AES-GCM via `credentialVault.util.ts`) and PATCH keeps the stored secret unless a new one is sent.
+- Connectors must only run introspection + SELECT/find with engine-escaped identifiers validated against the live schema; never interpolate user input into queries.
+- Keep the `assertHostAllowed` SSRF guard in every connector's connect path.
+- Sanitize/rename external field names (and nested object keys) before any Mongo write — existing `$`/dot guards reject, they do not rename.
+- Sync writes go through the shadow-collection swap and must respect the `MetaCollection.source` ownership guard; the scheduler must only open per-user connections via `getUserConnection`.
+
 ### Rate limiting
 
 The `rateLimit` middleware only checks cooldown state. Controllers must call `markRateLimitSuccess` only after the actual operation succeeds. Failed, rejected, or empty-precondition attempts should not consume quota unless the current endpoint explicitly documents otherwise.

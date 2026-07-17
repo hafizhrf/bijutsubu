@@ -172,12 +172,22 @@ function CollectionRow({ collection }: CollectionRowProps) {
           {collection.rowCount.toLocaleString()}
         </span>
         <span>
-          <Badge
-            variant={collection.createdVia === "auto" ? "muted" : "blue"}
-            className="w-fit px-2.5 py-0.5 text-[11px] font-medium capitalize"
-          >
-            {collection.createdVia}
-          </Badge>
+          {collection.source ? (
+            <Badge
+              variant="blue"
+              className="w-fit px-2.5 py-0.5 text-[11px] font-medium"
+              title={`Synced from ${collection.source.sourceName} (${collection.source.table})`}
+            >
+              ⟳ {collection.source.sourceName}
+            </Badge>
+          ) : (
+            <Badge
+              variant={collection.createdVia === "auto" ? "muted" : "blue"}
+              className="w-fit px-2.5 py-0.5 text-[11px] font-medium capitalize"
+            >
+              {collection.createdVia}
+            </Badge>
+          )}
         </span>
         <span className="text-xs tabular-nums text-ink-muted" title={collection.updatedAt}>
           {formatIsoDate(collection.updatedAt)}

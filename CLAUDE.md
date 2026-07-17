@@ -107,6 +107,28 @@ The frontend `uploadQueueStore` is persisted, processes one item at a time, obse
 survives route navigation. Browser `File` objects cannot survive reload, so rehydrated uploads without
 their file become an explicit error instead of silently replaying.
 
+## External data sources
+
+Users can connect MySQL/MariaDB, PostgreSQL, and MongoDB servers (`/api/sources`, "Sources" tab on
+Documents at `?tab=sources`). Connectors (`services/sources/`) are read-only by construction:
+introspection plus SELECT/find with engine-escaped identifiers validated against the live schema —
+never user-supplied SQL. Passwords are AES-256-GCM encrypted at rest (`credentialVault.util.ts`, key
+from `SOURCE_CREDENTIAL_ENC_KEY` or derived from `JWT_SECRET`) and are write-only: no endpoint returns
+or logs them. `SOURCE_ALLOW_PRIVATE_HOSTS=false` enables the SSRF guard (`sources/hostGuard.util.ts`
+resolves DNS and rejects loopback/private/link-local before dialing) — default true for self-hosted
+localhost use.
+
+`sourceSync.service.ts` mirrors each enabled table with a full refresh through a shadow collection
+(`<target>__sync_tmp` then rename with dropTarget — readers never see an empty window). External
+field names are renamed to safe workspace names (existing guards only reject `$`/dotted keys; sync
+renames instead, including nested object keys), SQL FKs upsert `MetaRelation`s (`createdVia:
+"datasource"`), and `MetaCollection.source` links the mirror to its source (ownership guard refuses
+to clobber collections another source/user data owns). Limits: 5 sources/user, 20 tables/source,
+`SOURCE_SYNC_MAX_ROWS` per table. Manual "Sync now" consumes the `sourceSync` cooldown; the polling
+scheduler (`sourceScheduler.service.ts`, 60s scan started in `server.ts`) is the backend's only
+timer — in-memory, single-process, per-source run locks; a restart just delays the next poll.
+Overview reports `serviceStatus.sources` and a finding when a source's last sync failed.
+
 ## Dashboard and custom-query pipeline
 
 Dashboard prompts pass through the intent guard and `genUI.specGenerator.service.ts`, which emits a

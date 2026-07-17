@@ -6,7 +6,8 @@ export type RateLimitedAction =
   | "genui"
   | "kbUpload"
   | "kbChat"
-  | "insight";
+  | "insight"
+  | "sourceSync";
 
 export const RATE_LIMIT_WINDOWS_MS: Record<RateLimitedAction, number> = {
   upload: env.UPLOAD_RATE_LIMIT_MINUTES * 60_000,
@@ -19,6 +20,8 @@ export const RATE_LIMIT_WINDOWS_MS: Record<RateLimitedAction, number> = {
   kbUpload: env.KB_UPLOAD_RATE_LIMIT_MINUTES * 60_000,
   kbChat: env.KB_CHAT_RATE_LIMIT_MINUTES * 60_000,
   insight: env.GENUI_RATE_LIMIT_MINUTES * 60_000,
+  // Manual "Sync now" anti-spam window; scheduled syncs bypass rate limiting.
+  sourceSync: env.SOURCE_SYNC_RATE_LIMIT_MINUTES * 60_000,
 };
 
 export const UPLOAD_MAX_FILE_SIZE_BYTES = env.UPLOAD_MAX_FILE_SIZE_MB * 1024 * 1024;

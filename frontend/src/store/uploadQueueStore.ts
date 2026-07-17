@@ -305,6 +305,11 @@ export const useUploadQueueStore = create<UploadQueueState>()(
           return;
         }
 
+        if (status === 409 && code === "collection_limit_reached") {
+          finishHardError(id, item.fileName, "Your Free plan is limited to 20 collections. Remove a collection or upgrade to continue.");
+          return;
+        }
+
         if (status === 409 && code === "target_collection_not_found") {
           patchItem(id, {
             status: "needs-decision",

@@ -10,6 +10,9 @@ const userSchema = new Schema(
     // first KB upload) and never accepted from the client — same trust model
     // as dbName.
     difyDatasetId: { type: String },
+    suspendedAt: { type: Date, default: null },
+    suspensionReason: { type: String, default: null },
+    suspendedBy: { type: String, default: null },
   },
   { timestamps: true },
 );

@@ -14,7 +14,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const setUser = useAuthStore((state) => state.setUser);
 
   useEffect(() => {
-    if (!token || (user?.displayName && user.createdAt)) return;
+    if (!token || (user?.displayName && user.createdAt && typeof user.isAdmin === "boolean")) return;
     void me().then(({ user: refreshed }) => setUser(refreshed)).catch(() => undefined);
   }, [setUser, token, user?.createdAt, user?.displayName]);
 

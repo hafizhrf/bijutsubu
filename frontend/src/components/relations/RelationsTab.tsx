@@ -16,7 +16,9 @@ import {
 import type { Connection, EdgeTypes, NodeTypes } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { getCollections, getRelations, promptRelations } from "@/api/collections";
+import { getSources } from "@/api/sources";
 import { useIsDark } from "@/lib/useIsDark";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -269,6 +271,7 @@ function PromptBar({
 function RelationsCanvas() {
   const collectionsQuery = useQuery({ queryKey: ["collections"], queryFn: getCollections });
   const relationsQuery = useQuery({ queryKey: ["relations"], queryFn: getRelations });
+  const sourcesQuery = useQuery({ queryKey: ["sources"], queryFn: getSources });
   // React Flow paints Background/MiniMap colors as SVG attributes, so CSS
   // vars can't be used there — pick concrete colors per mode instead.
   const isDark = useIsDark();
@@ -283,49 +286,46 @@ function RelationsCanvas() {
 
   const collections = collectionsQuery.data;
   const relations = relationsQuery.data;
+  const [scope, setScope] = useState<string>("local");
+  const sources = sourcesQuery.data ?? [];
+  const visibleCollections = useMemo(() => {
+    if (scope === "local") return collections?.filter((collection) => !collection.source);
+    return collections?.filter((collection) => collection.source?.sourceId === scope);
+  }, [collections, scope]);
+  const visibleRelations = useMemo(() => {
+    if (!relations || !visibleCollections) return [];
+    const names = new Set(visibleCollections.map((collection) => collection.name));
+    return relations.filter((relation) => names.has(relation.fromCollection) && names.has(relation.toCollection));
+  }, [relations, visibleCollections]);
 
   // Sync nodes from the collections query, preserving current/stored positions.
   useEffect(() => {
-    if (!collections) return;
+    if (!visibleCollections) return;
     const stored = loadStoredPositions();
-    const connectedFields = computeConnectedFields(relations ?? []);
+    const connectedFields = computeConnectedFields(visibleRelations);
     setNodes((previous) => {
       const previousPositions = new Map(previous.map((node) => [node.id, node.position]));
-      return collections.map((collection, index) => ({
+      return visibleCollections.map((collection, index) => ({
         id: collection.name,
         type: "collection" as const,
         position:
           previousPositions.get(collection.name) ??
           stored[collection.name] ??
-          defaultPosition(index, collections.length),
+          defaultPosition(index, visibleCollections.length),
         data: {
           collection,
           connectedFields: connectedFields.get(collection.name) ?? [],
         },
       }));
     });
-  }, [collections, relations, setNodes]);
+  }, [visibleCollections, visibleRelations, setNodes]);
 
   // Sync edges from the relations query; skip relations pointing at unknown
   // collections/fields so React Flow never gets a dangling edge.
   useEffect(() => {
-    if (!collections || !relations) return;
-    const fieldsByCollection = new Map(
-      collections.map((collection) => [
-        collection.name,
-        // _id is a valid relation endpoint on every collection — CollectionNode
-        // renders it as a pseudo-field row with its own handles.
-        new Set(["_id", ...collection.fields.map((field) => field.name)]),
-      ]),
-    );
+    if (!visibleCollections) return;
     setEdges(
-      relations
-        .filter(
-          (relation) =>
-            fieldsByCollection.get(relation.fromCollection)?.has(relation.fromField) &&
-            fieldsByCollection.get(relation.toCollection)?.has(relation.toField),
-        )
-        .map((relation) => ({
+      visibleRelations.map((relation) => ({
           id: relation._id,
           source: relation.fromCollection,
           target: relation.toCollection,
@@ -336,7 +336,7 @@ function RelationsCanvas() {
           data: { relation },
         })),
     );
-  }, [collections, relations, setEdges]);
+  }, [visibleCollections, visibleRelations, setEdges]);
 
   // Fit the view once nodes have been measured on first load.
   useEffect(() => {
@@ -388,9 +388,9 @@ function RelationsCanvas() {
   const collectionLabels = useMemo(
     () =>
       Object.fromEntries(
-        (collections ?? []).map((collection) => [collection.name, collection.displayName]),
+        (visibleCollections ?? []).map((collection) => [collection.name, collection.displayName]),
       ),
-    [collections],
+    [visibleCollections],
   );
 
   const isLoading = collectionsQuery.isPending || relationsQuery.isPending;
@@ -444,12 +444,20 @@ function RelationsCanvas() {
     );
   }
 
-  const showHint = (relations?.length ?? 0) === 0;
+  const showHint = visibleRelations.length === 0;
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex gap-1 overflow-x-auto rounded-xl border border-border-soft bg-surface-muted/50 p-1">
+        <button type="button" onClick={() => setScope("local")} className={cn("shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors", scope === "local" ? "bg-sidebar text-sidebar-ink" : "text-ink-muted hover:text-ink")}>Bijustubu</button>
+        {sources.map((source) => (
+          <button key={source._id} type="button" onClick={() => setScope(source._id)} className={cn("shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors", scope === source._id ? "bg-sidebar text-sidebar-ink" : "text-ink-muted hover:text-ink")}>
+            {source.name} - {source.database}:{source.port}
+          </button>
+        ))}
+      </div>
       <PromptBar
-        relations={relations ?? []}
+        relations={visibleRelations}
         collectionLabels={collectionLabels}
         onSelectRelation={(relation) => setDialogState({ mode: "edit", relation })}
       />

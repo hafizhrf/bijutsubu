@@ -7,6 +7,7 @@ import { getMetaRelationModel } from "../models/metaRelation.model.js";
 import { getMetaDashboardModel } from "../models/metaDashboard.model.js";
 import { getActivityLogModel } from "../models/activityLog.model.js";
 import { getMetaInsightSnapshotModel } from "../models/metaInsightSnapshot.model.js";
+import { getMetaSourceModel } from "../models/metaSource.model.js";
 import { getUserDatasetId } from "../services/kbDataset.service.js";
 import { listDocuments } from "../services/difyClient.service.js";
 import { completeJSON } from "../services/llmClient.service.js";
@@ -55,11 +56,12 @@ async function buildWorkspaceProfile(dbName: string, userId: string) {
   const Dashboard = getMetaDashboardModel(conn);
   const Activity = getActivityLogModel(conn);
   const InsightSnapshot = getMetaInsightSnapshotModel(conn);
+  const Source = getMetaSourceModel(conn);
   const now = Date.now();
   const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
   const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
 
-  const [collections, relations, dashboardCount, recentActivity, currentActivity, previousActivity, latestSnapshot] =
+  const [collections, relations, dashboardCount, recentActivity, currentActivity, previousActivity, latestSnapshot, sources] =
     await Promise.all([
       Collection.find().sort({ updatedAt: -1 }).lean(),
       Relation.find().lean(),
@@ -68,7 +70,12 @@ async function buildWorkspaceProfile(dbName: string, userId: string) {
       Activity.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
       Activity.countDocuments({ createdAt: { $gte: fourteenDaysAgo, $lt: sevenDaysAgo } }),
       InsightSnapshot.findOne().sort({ generatedAt: -1 }).lean(),
+      Source.find().select("name lastSyncStatus").lean(),
     ]);
+
+  const failingSources = sources.filter((source) => source.lastSyncStatus === "error");
+  const sourcesStatus: "none" | "ok" | "error" =
+    sources.length === 0 ? "none" : failingSources.length > 0 ? "error" : "ok";
 
   let knowledgeDocuments: number | null = 0;
   let knowledgeStatus: "ready" | "empty" | "unavailable" = "empty";
@@ -144,6 +151,16 @@ async function buildWorkspaceProfile(dbName: string, userId: string) {
     }
   }
 
+  if (failingSources.length > 0) {
+    findings.push({
+      id: "source-sync-failing",
+      severity: "warning",
+      title: `${failingSources.length} data source${failingSources.length === 1 ? " is" : "s are"} failing to sync`,
+      description: "Connected collections keep their last synced data until the connection is fixed.",
+      action: { label: "Review sources", to: "/documents?tab=sources" },
+    });
+  }
+
   if (currentActivity > previousActivity && previousActivity > 0) {
     const increase = Math.round(((currentActivity - previousActivity) / previousActivity) * 100);
     findings.push({
@@ -181,7 +198,7 @@ async function buildWorkspaceProfile(dbName: string, userId: string) {
     },
     findings: findings.slice(0, 5),
     recentActivity,
-    serviceStatus: { knowledge: knowledgeStatus },
+    serviceStatus: { knowledge: knowledgeStatus, sources: sourcesStatus },
     aiSnapshot: latestSnapshot
       ? {
           requestId: latestSnapshot.requestId,

@@ -2,7 +2,7 @@ import { useRef } from "react";
 import type { ReactNode } from "react";
 import { NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Activity01Icon, BookOpen01Icon, CloudUploadIcon, DashboardCircleIcon, Database01Icon, Logout03Icon, Settings02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
+import { Shield01Icon, Activity01Icon, BookOpen01Icon, CloudUploadIcon, DashboardCircleIcon, Database01Icon, Logout03Icon, Settings02Icon, SparklesIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { useSettingsStore } from "@/store/settingsStore";
@@ -48,11 +48,13 @@ function SlidingPill({ activeIndex, stride, className }: { activeIndex: number; 
 }
 
 function NavRows({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
-  const activeIndex = useActiveIndex(primaryItems);
+  const isAdmin = useAuthStore((state) => state.user?.isAdmin);
+  const navItems = [...primaryItems, ...(isAdmin ? [{ to: "/admin", label: "Admin", hint: "Support and health", icon: Shield01Icon }] : [])];
+  const activeIndex = useActiveIndex(navItems);
   return <nav className="relative flex flex-col gap-1.5">
     <SlidingPill activeIndex={activeIndex} stride={54} className="h-12 rounded-2xl bg-sidebar-ink" />
-    {primaryItems.map(({ to, label, hint, icon }) => (
-      <NavLink key={to} to={to} onClick={onNavigate} title={expanded ? hint : `${label} — ${hint}`} className={({ isActive }) => cn("relative flex h-12 items-center rounded-2xl transition-colors duration-300 active:scale-[0.98]", isActive ? "text-sidebar" : "text-sidebar-ink/60 hover:bg-sidebar-ink/10 hover:text-sidebar-ink")}>
+    {navItems.map(({ to, label, hint, icon }) => (
+      <NavLink key={to} to={to} onClick={onNavigate} title={expanded ? hint : `${label} — ${hint}`} className={({ isActive }) => cn("relative flex h-12 items-center rounded-2xl transition-colors duration-300 active:scale-[0.98]", isActive ? "text-sidebar" : "text-sidebar-ink/85 hover:bg-sidebar-ink/15 hover:text-sidebar-ink")}>
         <span className="flex h-12 w-12 shrink-0 items-center justify-center"><HugeiconsIcon icon={icon} size={20} /></span><RailLabel visible={expanded}>{label}</RailLabel>
       </NavLink>
     ))}
@@ -74,11 +76,11 @@ function UtilityRows({ expanded, onNavigate }: { expanded: boolean; onNavigate?:
   return <nav className="relative flex flex-col gap-1">
     <SlidingPill activeIndex={activeIndex} stride={48} className="h-11 rounded-2xl bg-sidebar-ink/10" />
     {utilityItems.map(({ to, label, icon }) => (
-      <NavLink key={to} to={to} onClick={onNavigate} title={expanded ? undefined : label} className={({ isActive }) => cn("relative flex h-11 items-center rounded-2xl transition-colors duration-300", isActive && !settingsOpen ? "text-sidebar-ink" : "text-sidebar-ink/60 hover:bg-sidebar-ink/10 hover:text-sidebar-ink")}>
+      <NavLink key={to} to={to} onClick={onNavigate} title={expanded ? undefined : label} className={({ isActive }) => cn("relative flex h-11 items-center rounded-2xl transition-colors duration-300", isActive && !settingsOpen ? "text-sidebar-ink" : "text-sidebar-ink/85 hover:bg-sidebar-ink/15 hover:text-sidebar-ink")}>
         <span className="flex h-11 w-12 shrink-0 items-center justify-center"><HugeiconsIcon icon={icon} size={18} /></span><RailLabel visible={expanded}>{label}</RailLabel>
       </NavLink>
     ))}
-    <button type="button" onClick={openSettings} title={expanded ? undefined : "Settings"} className={cn("relative flex h-11 items-center rounded-2xl transition-colors duration-300", settingsOpen ? "text-sidebar-ink" : "text-sidebar-ink/60 hover:bg-sidebar-ink/10 hover:text-sidebar-ink")}>
+    <button type="button" onClick={openSettings} title={expanded ? undefined : "Settings"} className={cn("relative flex h-11 items-center rounded-2xl transition-colors duration-300", settingsOpen ? "text-sidebar-ink" : "text-sidebar-ink/85 hover:bg-sidebar-ink/15 hover:text-sidebar-ink")}>
       <span className="flex h-11 w-12 shrink-0 items-center justify-center"><HugeiconsIcon icon={Settings02Icon} size={18} /></span><RailLabel visible={expanded}>Settings</RailLabel>
     </button>
   </nav>;
@@ -102,9 +104,9 @@ function ProfileMenu({ expanded, onNavigate }: { expanded: boolean; onNavigate?:
     playBrandTransition(() => { logout(); navigate("/login"); });
   };
   return <DropdownMenu>
-    <DropdownMenuTrigger asChild><button type="button" className="flex h-12 w-full items-center gap-3 rounded-2xl text-left text-sidebar-ink/70 transition-colors hover:bg-sidebar-ink/10 hover:text-sidebar-ink">
+    <DropdownMenuTrigger asChild><button type="button" className="flex h-12 w-full items-center gap-3 rounded-2xl text-left text-sidebar-ink/90 transition-colors hover:bg-sidebar-ink/15 hover:text-sidebar-ink">
       <Avatar className="ml-1 h-10 w-10 shrink-0 border border-sidebar-ink/10"><AvatarFallback className="bg-sidebar-ink/10 text-sidebar-ink">{initial}</AvatarFallback></Avatar>
-      <RailLabel visible={expanded} className="min-w-0"><span className="block max-w-36 truncate text-sm text-sidebar-ink">{user?.displayName || user?.email?.split("@")[0]}</span><span className="block max-w-36 truncate text-[11px] font-normal text-sidebar-ink/55">{user?.email}</span></RailLabel>
+      <RailLabel visible={expanded} className="min-w-0"><span className="block max-w-36 truncate text-sm text-sidebar-ink">{user?.displayName || user?.email?.split("@")[0]}</span><span className="block max-w-36 truncate text-[11px] font-normal text-sidebar-ink/75">{user?.email}</span></RailLabel>
     </button></DropdownMenuTrigger>
     <DropdownMenuContent side="right" align="end" className="w-56">
       <DropdownMenuItem onSelect={openAccountSettings}><HugeiconsIcon icon={Settings02Icon} className="mr-2 h-4 w-4" /> Account settings</DropdownMenuItem>
@@ -118,8 +120,8 @@ export function Sidebar() {
   return <aside className={cn("hidden shrink-0 transition-[width] duration-200 md:block", pinned ? "w-60" : "w-20")}>
     <div className={cn("group/rail fixed inset-y-0 left-0 z-40 flex flex-col overflow-hidden bg-sidebar px-4 py-6 transition-[width,box-shadow] duration-200", pinned ? "w-60 shadow-2xl shadow-black/20" : "w-20 hover:w-60 hover:shadow-2xl hover:shadow-black/40")} style={{ transitionTimingFunction: SNAPPY }}>
       <div className="flex items-center gap-3"><BrandMark className="h-11 w-12" /><RailLabel visible={pinned} className="text-sidebar-ink">Bijustubu</RailLabel></div>
-      <div className="mt-8 min-h-0 flex-1 overflow-y-auto overflow-x-hidden"><RailLabel visible={pinned} className="mb-2 block px-3 text-[10px] uppercase tracking-[0.16em] text-sidebar-ink/35">Workspace</RailLabel><NavRows expanded={pinned} /></div>
-      <div className="mt-4 border-t border-sidebar-ink/10 pt-3"><RailLabel visible={pinned} className="mb-1 block px-3 text-[10px] uppercase tracking-[0.16em] text-sidebar-ink/35">Manage</RailLabel><UtilityRows expanded={pinned} /><div className="mt-2"><ProfileMenu expanded={pinned} /></div></div>
+      <div className="mt-8 min-h-0 flex-1 overflow-y-auto overflow-x-hidden"><RailLabel visible={pinned} className="mb-2 block px-3 text-[10px] uppercase tracking-[0.16em] text-sidebar-ink/65">Workspace</RailLabel><NavRows expanded={pinned} /></div>
+      <div className="mt-4 border-t border-sidebar-ink/10 pt-3"><RailLabel visible={pinned} className="mb-1 block px-3 text-[10px] uppercase tracking-[0.16em] text-sidebar-ink/65">Manage</RailLabel><UtilityRows expanded={pinned} /><div className="mt-2"><ProfileMenu expanded={pinned} /></div></div>
     </div>
   </aside>;
 }
