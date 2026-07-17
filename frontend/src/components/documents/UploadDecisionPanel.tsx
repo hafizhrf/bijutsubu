@@ -19,7 +19,9 @@ import { UploadPreviewDialog } from "@/components/documents/UploadPreviewDialog"
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   Alert02Icon,
+  ArrowRight02Icon,
   Clock01Icon,
+  Database01Icon,
   EyeIcon,
   GitMergeIcon,
   InformationCircleIcon,
@@ -62,7 +64,164 @@ function candidateSummary(candidate: UploadPreviewCandidate): string {
  * merge into a similar collection (skipping or updating duplicates), proceed
  * as the LLM planned, create a fresh collection, or skip the file entirely.
  */
-export function UploadDecisionPanel({
+/**
+ * All-or-nothing approval for a staged SQL dump: a summary of every
+ * collection (with row/field counts) and every relation the import will
+ * create. No merge/field-edit options — approve exactly what's listed, or skip.
+ */
+function SqlDumpApproval({
+  pending,
+  errorMessage,
+  now,
+  onResolve,
+  onSkip,
+}: Omit<UploadDecisionPanelProps, "fileName">) {
+  const summary = pending.sqlSummary!;
+  const expiresInMin = Math.max(0, Math.ceil((new Date(pending.expiresAt).getTime() - now) / 60_000));
+  const totalRows = summary.tables.reduce((sum, table) => sum + table.rowCount, 0);
+  const collisions = summary.tables.filter((table) => table.exists);
+  const [strategy, setStrategy] = useState<"replace" | "suffix">("replace");
+
+  return (
+    <div className="mt-3 flex animate-fade-in-up flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 dark:border-amber-300/20 dark:bg-amber-400/10 p-4">
+      <div className="flex gap-3 text-amber-900 dark:text-amber-200">
+        <HugeiconsIcon icon={InformationCircleIcon} className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="flex flex-col gap-1 text-sm">
+          <p className="font-medium">
+            SQL import ready — {summary.tables.length} collection{summary.tables.length === 1 ? "" : "s"}, {totalRows.toLocaleString()} rows
+            {summary.relations.length > 0 && `, ${summary.relations.length} relation${summary.relations.length === 1 ? "" : "s"}`}
+          </p>
+          <p className="flex items-center gap-1 text-xs text-amber-800/80 dark:text-amber-200/70">
+            <HugeiconsIcon icon={Clock01Icon} className="h-3 w-3" /> Nothing is saved yet · review the summary and approve · expires in ~{expiresInMin} min
+          </p>
+        </div>
+      </div>
+
+      {errorMessage && (
+        <p className="flex items-start gap-1.5 rounded-xl bg-rose-100/70 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+          <HugeiconsIcon icon={Alert02Icon} className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {errorMessage}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-1.5">
+        {summary.tables.map((table) => (
+          <div key={table.collectionName} className="flex flex-wrap items-center gap-2 rounded-2xl border border-border-soft bg-surface/70 px-3 py-2">
+            <HugeiconsIcon icon={Database01Icon} className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+            <span className="text-sm font-medium text-ink">{table.displayName}</span>
+            {table.collectionName !== table.displayName && (
+              <span className="font-mono text-[11px] text-ink-muted">→ {table.collectionName}</span>
+            )}
+            <span className="text-xs text-ink-muted">
+              {table.rowCount.toLocaleString()} rows · {table.fields.length} fields
+            </span>
+            {table.exists && (
+              <span className="rounded-full bg-amber-200/70 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:bg-amber-400/20 dark:text-amber-200">
+                {strategy === "replace"
+                  ? table.updatableByKey
+                    ? "exists — will update"
+                    : "exists, no key — will copy"
+                  : "exists — will copy"}
+              </span>
+            )}
+            <span className="flex min-w-0 flex-wrap gap-1">
+              {table.fields.slice(0, 5).map((field) => (
+                <span key={field.name} className="rounded-full bg-surface-muted px-2 py-0.5 font-mono text-[10px] text-ink-muted">
+                  {field.name}
+                </span>
+              ))}
+              {table.fields.length > 5 && (
+                <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] text-ink-muted">
+                  +{table.fields.length - 5}
+                </span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {summary.relations.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-900 dark:text-amber-200">
+            <HugeiconsIcon icon={GitMergeIcon} className="h-3 w-3" /> Relations from foreign keys
+          </p>
+          <div className="flex flex-col gap-1">
+            {summary.relations.map((relation, index) => (
+              <span key={index} className="flex flex-wrap items-center gap-1.5 pl-4.5 font-mono text-[11px] text-ink-muted">
+                {relation.fromCollection}.{relation.fromField}
+                <HugeiconsIcon icon={ArrowRight02Icon} className="h-3 w-3" />
+                {relation.toCollection}.{relation.toField}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {collisions.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-900 dark:text-amber-200">
+            <HugeiconsIcon icon={Alert02Icon} className="h-3 w-3" /> {collisions.length} collection
+            {collisions.length === 1 ? "" : "s"} already exist{collisions.length === 1 ? "s" : ""} — choose what to do
+          </p>
+          <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-border-soft bg-surface/70 px-3 py-2">
+            <input
+              type="radio"
+              name={`sql-strategy-${pending.pendingId}`}
+              checked={strategy === "replace"}
+              onChange={() => setStrategy("replace")}
+              className="mt-0.5 h-3.5 w-3.5 accent-accent-blue"
+            />
+            <span className="flex flex-col text-xs">
+              <span className="text-sm font-medium text-ink">Update existing collections</span>
+              <span className="text-ink-muted">
+                Rows are matched by primary key — same keys are overwritten, new keys added. Tables
+                without a key are imported as copies.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-border-soft bg-surface/70 px-3 py-2">
+            <input
+              type="radio"
+              name={`sql-strategy-${pending.pendingId}`}
+              checked={strategy === "suffix"}
+              onChange={() => setStrategy("suffix")}
+              className="mt-0.5 h-3.5 w-3.5 accent-accent-blue"
+            />
+            <span className="flex flex-col text-xs">
+              <span className="text-sm font-medium text-ink">Keep existing — import as new copies</span>
+              <span className="text-ink-muted">Colliding tables get a numbered name like pesanan_2.</span>
+            </span>
+          </label>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" onClick={onSkip}>
+          Skip this file
+        </Button>
+        <Button
+          size="sm"
+          onClick={() =>
+            onResolve({
+              mode: "apply-plan",
+              ...(collisions.length > 0 ? { sqlCollisionStrategy: strategy } : {}),
+            })
+          }
+        >
+          Approve &amp; import everything
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function UploadDecisionPanel(props: UploadDecisionPanelProps) {
+  // SQL dumps get the dedicated multi-collection approval; hook-free wrapper
+  // so each branch keeps a stable hook order.
+  if (props.pending.sqlSummary) return <SqlDumpApproval {...props} />;
+  return <SingleUploadDecision {...props} />;
+}
+
+function SingleUploadDecision({
   fileName,
   pending,
   errorMessage,
@@ -144,13 +303,17 @@ export function UploadDecisionPanel({
     "flex cursor-pointer flex-col gap-1 rounded-2xl border p-3 transition-colors";
 
   return (
-    <div className="mt-3 flex animate-fade-in-up flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
-      <div className="flex gap-3 text-amber-900">
+    <div className="mt-3 flex animate-fade-in-up flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/60 dark:border-amber-300/20 dark:bg-amber-400/10 p-4">
+      <div className="flex gap-3 text-amber-900 dark:text-amber-200">
         <HugeiconsIcon icon={InformationCircleIcon} className="mt-0.5 h-4 w-4 shrink-0" />
         <div className="flex flex-col gap-1 text-sm">
-          <p className="font-medium">Similar data detected — choose what to do</p>
+          <p className="font-medium">
+            {hasPlannedTarget || preview.candidates.length > 0
+              ? "Similar data detected — choose what to do"
+              : `Review upload — approve to create "${plan.displayName}" (${preview.totalRows.toLocaleString()} rows)`}
+          </p>
           {pending.similarityNote && <p>{pending.similarityNote}</p>}
-          <p className="flex items-center gap-1 text-xs text-amber-800/80">
+          <p className="flex items-center gap-1 text-xs text-amber-800/80 dark:text-amber-200/70">
             <HugeiconsIcon icon={Clock01Icon} className="h-3 w-3" /> Nothing is saved yet · this choice expires in ~
             {expiresInMin} min, then the file is re-analyzed
           </p>
@@ -158,7 +321,7 @@ export function UploadDecisionPanel({
       </div>
 
       {errorMessage && (
-        <p className="flex items-start gap-1.5 rounded-xl bg-rose-100/70 px-3 py-2 text-sm text-rose-700">
+        <p className="flex items-start gap-1.5 rounded-xl bg-rose-100/70 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
           <HugeiconsIcon icon={Alert02Icon} className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {errorMessage}
         </p>
       )}
@@ -238,7 +401,7 @@ export function UploadDecisionPanel({
                     </Select>
                   </div>
                 ) : (
-                  <span className="pl-5.5 text-xs text-amber-700">
+                  <span className="pl-5.5 text-xs text-amber-700 dark:text-amber-300">
                     No unique field set on this collection — every row will be appended. Set one
                     on the Collections page to skip/update duplicates.
                   </span>
@@ -272,12 +435,27 @@ export function UploadDecisionPanel({
         </label>
       </div>
 
+      {createFlavored && plan.relations.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-amber-900 dark:text-amber-200">
+            <HugeiconsIcon icon={GitMergeIcon} className="h-3 w-3" /> Relations that will be added
+          </p>
+          {plan.relations.map((relation, index) => (
+            <span key={index} className="flex flex-wrap items-center gap-1.5 pl-4.5 font-mono text-[11px] text-ink-muted">
+              {plan.displayName}.{relation.fromField}
+              <HugeiconsIcon icon={ArrowRight02Icon} className="h-3 w-3" />
+              {relation.toCollection}.{relation.toField}
+            </span>
+          ))}
+        </div>
+      )}
+
       {createFlavored && (
         <div className="flex flex-col gap-2">
           <button
             type="button"
             onClick={() => setEditFieldsOpen((open) => !open)}
-            className="flex w-fit items-center gap-1.5 text-xs font-medium text-amber-900 underline-offset-2 transition-colors hover:underline"
+            className="flex w-fit items-center gap-1.5 text-xs font-medium text-amber-900 dark:text-amber-200 underline-offset-2 transition-colors hover:underline"
           >
             <HugeiconsIcon icon={PencilEdit02Icon} className="h-3 w-3" />
             {editFieldsOpen ? "Hide field editing" : "Edit field names & types before saving"}

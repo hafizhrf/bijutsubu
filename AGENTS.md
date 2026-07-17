@@ -59,6 +59,8 @@ Backend flow and ownership:
 - `src/models/` contains control-plane and per-user metadata model factories.
 - `src/db/userConnectionManager.ts` is the only path to a user's physical database.
 - `src/middleware/auth.ts`, `rateLimit.ts`, and `upload.ts` enforce cross-cutting boundaries.
+- `src/services/sqlDumpParser.util.ts` imports SQL dumps deterministically (one collection per table + FK-derived relations, no LLM); only schema-less .sql files reach the extraction planner as raw text.
+- Every upload stages as "needs-decision" and waits for user approval on the Documents page — do not reintroduce an auto-apply fast path.
 
 Frontend flow and ownership:
 

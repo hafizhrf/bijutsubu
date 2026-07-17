@@ -2,10 +2,14 @@ import { PDFParse } from "pdf-parse";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import mammoth from "mammoth";
+import { parseSqlDump } from "./sqlDumpParser.util.js";
+import type { SqlDumpRelation, SqlDumpTable } from "./sqlDumpParser.util.js";
 
 export type ParsedDocument =
   | { kind: "rows"; rows: Record<string, unknown>[] }
-  | { kind: "text"; text: string };
+  | { kind: "text"; text: string }
+  /** SQL dumps parse deterministically into one dataset per table. */
+  | { kind: "sql-tables"; tables: SqlDumpTable[]; relations: SqlDumpRelation[] };
 
 export async function parseDocument(
   buffer: Buffer,
@@ -38,13 +42,17 @@ export async function parseDocument(
     return parseDocx(buffer);
   }
 
-  // .sql rides the plain-text path: the extraction planner is shape-driven
-  // and pulls records out of raw text (CREATE TABLE/INSERT statements included).
-  if (
-    mimetype === "text/markdown" || ext === "md" ||
-    mimetype === "text/plain" || ext === "txt" ||
-    mimetype === "application/sql" || mimetype === "application/x-sql" || ext === "sql"
-  ) {
+  if (mimetype === "application/sql" || mimetype === "application/x-sql" || ext === "sql") {
+    const text = buffer.toString("utf-8");
+    // Dumps with INSERT data import deterministically (schema from CREATE
+    // TABLE, rows from INSERTs); schema-only scripts fall back to the raw-text
+    // planner path like .txt.
+    const { tables, relations } = parseSqlDump(text);
+    if (tables.length > 0) return { kind: "sql-tables", tables, relations };
+    return { kind: "text", text };
+  }
+
+  if (mimetype === "text/markdown" || ext === "md" || mimetype === "text/plain" || ext === "txt") {
     return { kind: "text", text: buffer.toString("utf-8") };
   }
 

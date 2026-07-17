@@ -84,10 +84,24 @@ rejects keys beginning with `$` or containing `.`, and destructive operations va
 ## Structured upload pipeline
 
 `documents.controller.ts` parses a staged upload, asks `extractionPlanner.service.ts` for a validated
-plan, presents a preview/merge decision when needed, then applies writes through
-`collectionWriter.service.ts`. The planner may propose create/append/replace/merge, fields, rows, and
-relations, but deterministic code enforces collection naming, collision behavior, metadata validation,
-and writes. LLM output is advisory and never writes directly to MongoDB.
+plan, then applies writes through `collectionWriter.service.ts`. Every upload — including a clean
+create — is staged server-side and returned as "needs-decision"; nothing is written until the user
+approves it in the Documents-page panel (which summarizes the collections and relations to be added).
+The planner may propose create/append/replace/merge, fields, rows, and relations, but deterministic
+code enforces collection naming, collision behavior, metadata validation, and writes. LLM output is
+advisory and never writes directly to MongoDB.
+
+SQL dumps are the exception to the LLM planning path: `sqlDumpParser.util.ts` deterministically
+extracts every table (types from CREATE TABLE, rows from INSERT ... VALUES, relations from FOREIGN KEY
+constraints; trigger/procedure bodies, views, and INSERT...SELECT are ignored) and
+`documents.controller.ts` stages one plan per table (base names; collisions resolved at apply) plus a
+`sqlSummary` for the approval panel. Approval is all-or-nothing ("apply-plan" only; no merges or field
+overrides); when staged names collide with existing collections the panel offers a
+`sqlCollisionStrategy` — "replace" updates the existing collection by the table's primary key
+(create-time synthesized AUTO_INCREMENT values included), "suffix" imports numbered copies — and FK
+relations are remapped to the final names. The applied response
+keeps the single-`collection` contract (aggregate counts) plus a per-table `collections` breakdown.
+Schema-only .sql files (no INSERT data) fall back to the raw-text planner path.
 
 The frontend `uploadQueueStore` is persisted, processes one item at a time, observes cooldowns, and
 survives route navigation. Browser `File` objects cannot survive reload, so rehydrated uploads without

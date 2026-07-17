@@ -163,8 +163,31 @@ export interface UploadApplied {
   status: "applied";
   plan: UploadPlan;
   collection: UploadCollectionResult;
+  /** SQL-dump uploads create one collection per table; per-table breakdown.
+      `collection` then carries the aggregate counts. */
+  collections?: UploadCollectionResult[];
   similarityNote: string | null;
   similarCollections: SimilarCollection[];
+}
+
+/** Per-table + relations summary for a staged SQL dump awaiting approval. */
+export interface SqlDumpSummary {
+  tables: {
+    collectionName: string;
+    displayName: string;
+    rowCount: number;
+    fields: { name: string; type: string }[];
+    /** A collection with this name already exists in the workspace. */
+    exists: boolean;
+    /** Table has a primary key, so "update existing" can replace by key. */
+    updatableByKey: boolean;
+  }[];
+  relations: {
+    fromCollection: string;
+    fromField: string;
+    toCollection: string;
+    toField: string;
+  }[];
 }
 
 export interface UploadNeedsDecision {
@@ -172,6 +195,8 @@ export interface UploadNeedsDecision {
   pendingId: string;
   expiresAt: string;
   plan: UploadPlan;
+  /** Present when the staged upload is a SQL dump (multi-collection import). */
+  sqlSummary?: SqlDumpSummary;
   similarityNote: string | null;
   similarCollections: SimilarCollection[];
   preview: UploadPreview;
@@ -187,6 +212,12 @@ export interface UploadFieldOverride {
 }
 
 export type ApplyDecision =
-  | { mode: "apply-plan"; fieldOverrides?: UploadFieldOverride[] }
+  | {
+      mode: "apply-plan";
+      fieldOverrides?: UploadFieldOverride[];
+      /** SQL dumps only: colliding names update the existing collection by
+          primary key ("replace") or import a numbered copy ("suffix"). */
+      sqlCollisionStrategy?: "replace" | "suffix";
+    }
   | { mode: "create-new"; fieldOverrides?: UploadFieldOverride[] }
   | { mode: "merge-into"; targetCollection: string; duplicateStrategy: DuplicateStrategy };

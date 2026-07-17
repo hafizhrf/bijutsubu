@@ -7,6 +7,7 @@ import { useNotificationStore } from "@/store/notificationStore";
 import type {
   ApplyDecision,
   SimilarCollection,
+  SqlDumpSummary,
   UploadApplied,
   UploadPlan,
   UploadPreview,
@@ -25,6 +26,8 @@ export interface PendingDecision {
   pendingId: string;
   expiresAt: string;
   plan: UploadPlan;
+  /** Present for staged SQL dumps: multi-collection import summary. */
+  sqlSummary?: SqlDumpSummary;
   similarityNote: string | null;
   similarCollections: SimilarCollection[];
   preview: UploadPreview;
@@ -229,18 +232,25 @@ export const useUploadQueueStore = create<UploadQueueState>()(
         finishSuccess(id, item.fileName, response);
         return;
       }
-      // Similar data detected (or a non-create plan): park the queue until
-      // the user picks merge / create-new / skip for this file.
+      // Every upload stages server-side and parks the queue until the user
+      // approves it (or picks merge / create-new / skip) on the Documents page.
       patchItem(id, {
         status: "needs-decision",
         pending: {
           pendingId: response.pendingId,
           expiresAt: response.expiresAt,
           plan: response.plan,
+          sqlSummary: response.sqlSummary,
           similarityNote: response.similarityNote,
           similarCollections: response.similarCollections,
           preview: response.preview,
         },
+      });
+      useNotificationStore.getState().push({
+        kind: "info",
+        title: "Upload waiting for approval",
+        body: `${item.fileName} is parsed — review what will be created before it's saved.`,
+        link: "/documents",
       });
       set({ isProcessing: false });
     } catch (error) {

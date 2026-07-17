@@ -47,7 +47,9 @@ export interface ExtractionPlanResult {
 
 export async function planExtraction(
   conn: Connection,
-  parsed: ParsedDocument,
+  // sql-tables uploads never reach the planner — they apply deterministically
+  // in documents.controller (the dump itself is the schema).
+  parsed: Extract<ParsedDocument, { kind: "rows" | "text" }>,
   instruction: string | null,
   originalFileName: string,
 ): Promise<ExtractionPlanResult> {

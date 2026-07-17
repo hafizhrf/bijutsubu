@@ -16,6 +16,10 @@ export const PENDING_UPLOAD_ROWS_PER_CHUNK = 2000;
 const pendingUploadSchema = new Schema(
   {
     plan: { type: Schema.Types.Mixed, required: true },
+    /** SQL-dump staging: one plan per table (plan then mirrors plans[0]). */
+    plans: { type: Schema.Types.Mixed, default: null },
+    /** Compact per-table + relations summary shown in the approval panel. */
+    sqlSummary: { type: Schema.Types.Mixed, default: null },
     sourceFile: {
       originalName: { type: String, required: true },
       mimetype: { type: String, required: true },
@@ -34,6 +38,8 @@ const pendingUploadRowsSchema = new Schema(
   {
     pendingId: { type: Schema.Types.ObjectId, required: true, index: true },
     seq: { type: Number, required: true },
+    /** Which staged table (index into plans) these rows belong to; 0 for single-plan uploads. */
+    tableIndex: { type: Number, default: 0 },
     rows: { type: [Schema.Types.Mixed], required: true },
     expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
   },
