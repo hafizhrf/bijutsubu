@@ -16,7 +16,9 @@ services:
     restart: unless-stopped
     environment:
       PORT: "4000"
-      MONGODB_URI: ${MONGODB_URI:?Set MONGODB_URI}
+      # Database names are appended by the application, so this must remain
+      # the MongoDB server URI without a database path.
+      MONGODB_URI: mongodb://mongo:27017
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY}
