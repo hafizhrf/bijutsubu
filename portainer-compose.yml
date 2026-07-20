@@ -1,0 +1,56 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ${BIJUTSUBU_BACKEND_IMAGE:?Set the immutable GHCR backend image tag}
+    restart: unless-stopped
+    environment:
+      PORT: "4000"
+      MONGODB_URI: ${MONGODB_URI:?Set MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:?Set OPENAI_BASE_URL}
+      OPENAI_MODEL: ${OPENAI_MODEL:?Set OPENAI_MODEL}
+      CORS_ORIGIN: ${CORS_ORIGIN:?Set CORS_ORIGIN}
+      DIFY_BASE_URL: ${DIFY_BASE_URL:-}
+      DIFY_DATASET_API_KEY: ${DIFY_DATASET_API_KEY:-}
+      UPLOAD_RATE_LIMIT_MINUTES: ${UPLOAD_RATE_LIMIT_MINUTES:-5}
+      GENUI_RATE_LIMIT_MINUTES: ${GENUI_RATE_LIMIT_MINUTES:-5}
+      UPLOAD_MAX_FILE_SIZE_MB: ${UPLOAD_MAX_FILE_SIZE_MB:-15}
+      KB_UPLOAD_RATE_LIMIT_MINUTES: ${KB_UPLOAD_RATE_LIMIT_MINUTES:-5}
+      KB_CHAT_RATE_LIMIT_MINUTES: ${KB_CHAT_RATE_LIMIT_MINUTES:-1}
+      SOURCE_CREDENTIAL_ENC_KEY: ${SOURCE_CREDENTIAL_ENC_KEY:?Set SOURCE_CREDENTIAL_ENC_KEY}
+      SOURCE_SYNC_RATE_LIMIT_MINUTES: ${SOURCE_SYNC_RATE_LIMIT_MINUTES:-5}
+      SOURCE_ALLOW_PRIVATE_HOSTS: ${SOURCE_ALLOW_PRIVATE_HOSTS:-false}
+      SOURCE_SYNC_MAX_ROWS: ${SOURCE_SYNC_MAX_ROWS:-50000}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    image: ${BIJUTSUBU_FRONTEND_IMAGE:?Set the immutable GHCR frontend image tag}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:5080:80"
+
+volumes:
+  mongo_data:
